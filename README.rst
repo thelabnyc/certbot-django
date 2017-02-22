@@ -1,4 +1,6 @@
-# Certbot Django
+==============
+Certbot Django
+==============
 
 This is a combined plugin for the certbot ACME client and also a Django-app for proving ACME challenges. It works basically like this:
 
@@ -13,12 +15,11 @@ Server Setup:
 First run:
 
 1. Install ``certbot`` and ``certbot_django``.
-2. Run certbot and using the ``certbot_django:auth`` authenticator plugin.
+2. Run certbot and using the ``certbot_django:auth`` authenticator plugin.::
 
-```
-mkdir -p ~/.ssh/certbot/
-certbot certonly -d example.com -a certbot-django:auth --certbot-django:auth-key-directory=~/.ssh/certbot/ --certbot-django:auth-username=certbot
-```
+    mkdir -p ~/.ssh/certbot/
+    certbot certonly -d example.com -a certbot-django:auth --certbot-django:auth-key-directory=~/.ssh/certbot/ --certbot-django:auth-username=certbot
+
 
 3. Certbot will print a public key in PEM format and ask you to add it to the ``certbot`` user (which you created a moment ago) in Django. You can do that using the Django Admin at ``http://my.domain/admin/asymmetric_jwt_auth/publickey/add/``
 4. After doing this, press enter in your terminal to continue.
@@ -27,10 +28,8 @@ certbot certonly -d example.com -a certbot-django:auth --certbot-django:auth-key
 
 Subsequent runs:
 
-1. As long as you leave the certbot user and it's public key in Django and leave the private key in the same place on your computer (``~/.ssh/certbot/`` in the above example), authentication for a cert renew will be automatic.
+1. As long as you leave the certbot user and it's public key in Django and leave the private key in the same place on your computer (``~/.ssh/certbot/`` in the above example), authentication for a cert renew will be automatic.::
 
-```
-certbot renew -d example.com -a certbot-django:auth --certbot-django:auth-key-directory=~/.ssh/certbot/ --certbot-django:auth-username=certbot
-```
+    certbot renew -d example.com -a certbot-django:auth --certbot-django:auth-key-directory=~/.ssh/certbot/ --certbot-django:auth-username=certbot
 
 2. Since the private key still exists locally, it will use it instead of generating a new one.
