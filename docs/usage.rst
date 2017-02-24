@@ -25,8 +25,8 @@ The first time you run certbot for an application, you need to take a few extra 
     certbot certonly -d example.com \
                      -a certbot-django:auth \
                      --certbot-django-auth-key-directory=~/.ssh/certbot/ \
-                     --certbot-django-auth-username=certbot \
-                     --certbot-django-public-ip-logging-ok
+                     --certbot-django:auth-username=certbot \
+                     --certbot-django:auth-public-ip-logging-ok
 
 Theres a few things here to pay attention to here.
 
@@ -37,13 +37,13 @@ Theres a few things here to pay attention to here.
 
 **Certbot-Django Options:**
 
---certbot-django-auth-key-directory=directory  Tell certbot-django where to generate / look for a private key when
-                                               authenticating with your application. For example, ``~/.ssh/certbot/``.
---certbot-django-auth-username=username        Tell certbot-django which Django user to login as when authenticating
-                                               with your application. For example, username ``certbot``.
---certbot-django-public-ip-logging-ok          LetsEncrypt will log the Public IP of you machine as having requested
-                                               a certificate for this domain. Pass this flag to allow this automatically.
-                                               Otherwise, certbot will prompt you for permission to continue.
+--key-directory=directory  Tell certbot-django where to generate / look for a private key when
+                           authenticating with your application. For example, ``~/.ssh/certbot/``.
+--username=username        Tell certbot-django which Django user to login as when authenticating
+                           with your application. For example, username ``certbot``.
+--public-ip-logging-ok     LetsEncrypt will log the Public IP of you machine as having requested
+                           a certificate for this domain. Pass this flag to allow this automatically.
+                           Otherwise, certbot will prompt you for permission to continue.
 
 4. Certbot will print a public key in PEM format and ask you to add it to the ``certbot`` user (which you created a moment ago) in Django. You can do that using the Django Admin at ``http://my.domain/admin/asymmetric_jwt_auth/publickey/add/``. You can think of this step as being equivalent to adding a public key to a user's ``~/.ssh/authorized_keys`` file on a \*nix system.
 
