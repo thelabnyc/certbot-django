@@ -77,7 +77,7 @@ setup(
     ],
     author="Craig Weber",
     author_email='crgwbr@gmail.com',
-    url='https://github.com/crgwbr/certbot-django',
+    url='https://gitlab.com/thelabnyc/certbot-django',
     license='ISC',
     package_dir={'': 'src'},
     packages=packages,

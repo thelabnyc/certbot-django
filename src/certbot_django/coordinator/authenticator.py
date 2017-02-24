@@ -1,8 +1,8 @@
 from acme import challenges
 from asymmetric_jwt_auth import create_auth_header, generate_key_pair
-from certbot import interfaces
-from certbot import errors
+from certbot import interfaces, errors
 from certbot.plugins import common
+from certbot.display import util as display_util
 import requests
 import os.path
 import os
@@ -11,6 +11,42 @@ import zope.interface
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _test_key_dir_read_write(key_dir):
+    test_file_path = os.path.join(key_dir, 'certbot-test-file.txt')
+
+    try:
+        with open(test_file_path, 'w') as testfile:
+            testfile.write('test')
+    except (IOError, OSError):
+        raise errors.PluginError('Could not write file to %s' % key_dir)
+
+    try:
+        with open(test_file_path, 'r') as testfile:
+            testfile.readlines()
+    except (IOError, OSError):
+        raise errors.PluginError('Could not read file from %s' % key_dir)
+
+    try:
+        os.unlink(test_file_path)
+    except (IOError, OSError):
+        raise errors.PluginError('Could not remove file from %s' % key_dir)
+
+
+def _validate_key_dir(key_dir):
+    key_dir = os.path.expanduser(key_dir)
+    if not os.path.isdir(key_dir):
+        raise errors.PluginError(key_dir + " does not exist or is not a directory")
+    key_dir = os.path.abspath(key_dir)
+    _test_key_dir_read_write(key_dir)
+    return key_dir
+
+
+def _validate_username(username):
+    if len(username) <= 0:
+        raise errors.PluginError("Username can not be blank")
+    return username
 
 
 @zope.interface.implementer(interfaces.IAuthenticator)
@@ -40,31 +76,8 @@ class Authenticator(common.Plugin):
             help='Automatically allows public IP logging (default: Ask)')
 
 
-    def __init__(self, *args, **kwargs):
-        super(Authenticator, self).__init__(*args, **kwargs)
-        self._keys = {}
-
-
     def prepare(self):
-        key_dir = self._get_key_dir()
-        test_file_path = os.path.join(key_dir, 'certbot-test-file.txt')
-
-        try:
-            with open(test_file_path, 'w') as testfile:
-                testfile.write('test')
-        except (IOError, OSError):
-            raise errors.PluginError('Could not write file to %s' % key_dir)
-
-        try:
-            with open(test_file_path, 'r') as testfile:
-                testfile.readlines()
-        except (IOError, OSError):
-            raise errors.PluginError('Could not read file from %s' % key_dir)
-
-        try:
-            os.unlink(test_file_path)
-        except (IOError, OSError):
-            raise errors.PluginError('Could not remove file from %s' % key_dir)
+        pass
 
 
     def more_info(self):
@@ -147,30 +160,24 @@ class Authenticator(common.Plugin):
 
 
     def _get_headers(self, domain):
-        username = self._get_username()
-        private_key = self._get_private_key(domain, username)
+        private_key = self._get_private_key(domain)
         headers = {
-            'Authorization': create_auth_header(username=username, key=private_key)
+            'Authorization': create_auth_header(username=self._get_username(), key=private_key)
         }
         return headers
 
 
-    def _get_private_key(self, domain, username):
-        key_dir = self._get_key_dir()
+    def _get_private_key(self, domain):
         filename = 'certbot_django_id_rsa_{}'.format(domain).replace('.', '')
-        private_key_file = os.path.join(key_dir, filename)
-
-        private_key = self._keys.get(private_key_file, None)
-        if private_key:
-            logger.info('Using cached private key: %s' % private_key_file)
-            return private_key
+        private_key_file = os.path.join(self._get_key_dir(), filename)
+        private_key = None
 
         try:
             with open(private_key_file, 'r') as keyfile:
                 private_key = keyfile.read()
         except (IOError, OSError):
             if self.config.noninteractive_mode:
-                raise errors.PluginError('Could not read file from %s' % key_dir)
+                raise errors.PluginError('Could not read file from %s' % self._get_key_dir())
 
         if not private_key:
             private_key, public_key = generate_key_pair()
@@ -179,7 +186,7 @@ class Authenticator(common.Plugin):
                 with open(private_key_file, 'w') as keyfile:
                     keyfile.write(private_key)
             except (IOError, OSError):
-                raise errors.PluginError('Could not write private key to %s' % key_dir)
+                raise errors.PluginError('Could not write private key to %s' % self._get_key_dir())
             msg = (
                 "Couldn't read private key from {private_key_file}, so a new key has been generated and saved. "
                 "Please go your website ({url}) and add the following public key to the user '{username}'. "
@@ -191,26 +198,43 @@ class Authenticator(common.Plugin):
             msg = msg.format(
                 private_key_file=private_key_file,
                 url="http://{}/admin/asymmetric_jwt_auth/publickey/add/".format(domain),
-                username=username,
+                username=self._get_username(),
                 public_key=public_key)
             display = zope.component.getUtility(interfaces.IDisplay)
             display.notification(msg, wrap=False, force_interactive=True)
 
-        self._keys[private_key_file] = private_key
         return private_key
 
 
     def _get_username(self):
-        username = self.conf('username')
-        if not username:
-            cli_flag = '--{0}'.format(self.option_name('username'))
-            raise errors.PluginError('Must provide Django username with flag {}'.format(cli_flag))
-        return username
+        return self._get_config('username', 'Django username', _validate_username)
 
 
     def _get_key_dir(self):
-        key_dir = self.conf('key-directory')
-        if not key_dir:
-            cli_flag = '--{0}'.format(self.option_name('key-directory'))
-            raise errors.PluginError('Must provide key storage directory with flag {}'.format(cli_flag))
-        return os.path.abspath(os.path.expanduser(key_dir))
+        return self._get_config('key-directory', 'key storage directory', _validate_key_dir)
+
+
+    def _get_config(self, option, name, validation_fn):
+        value = self.conf(option)
+        if not value:
+            value = self._prompt_for_config("Input the {}".format(name), validation_fn)
+            setattr(self.config, self.dest(option), value)
+        if not value:
+            cli_flag = '--{0}'.format(self.option_name(option))
+            raise errors.PluginError('Must provide {} with flag {}'.format(name, cli_flag))
+        return validation_fn(value)
+
+
+    def _prompt_for_config(self, prompt, validation_fn=lambda value: value):
+        display = zope.component.getUtility(interfaces.IDisplay)
+        while True:
+            code, value = display.directory_select(prompt, force_interactive=True)
+            if code == display_util.HELP:
+                return None
+            elif code == display_util.CANCEL:
+                return None
+            else:
+                try:
+                    return validation_fn(value)
+                except errors.PluginError as error:
+                    display.notification(str(error), pause=False)

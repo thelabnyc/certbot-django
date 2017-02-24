@@ -33,7 +33,8 @@ class AuthenticatorTest(unittest.TestCase):
 
     def test_bad_key_dir(self):
         self.config.django_key_directory = '/this/dir/doest/exist/'
-        self.assertRaises(errors.PluginError, self.auth.prepare)
+        self.config.django_public_ip_logging_ok = True
+        self.assertRaises(errors.PluginError, self.auth.perform, self.achalls)
 
 
     def test_more_info(self):
