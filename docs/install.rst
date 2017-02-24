@@ -38,9 +38,27 @@ To use certbot-django, you must first install it in the Django application for w
     ]
     …
 
-4. Deploy your application so that it's accessible to the Internet over HTTP on port 80.
+4. Include certbot-django in your applications URLs file. **In order to work, it must be placed at my.domain.com/.well-known/**.
 
-5. Run migrations to create the necessary models.
+.. code-block:: python
+    :emphasize-lines: 4,8
+
+    # myproject/urls.py
+    from django.conf.urls import include, url
+    from django.contrib import admin
+    import certbot_django.server.urls
+
+    urlpatterns = [
+        url(r'^admin/', include(admin.site.urls)),
+        url(r'^\.well-known/', include(certbot_django.server.urls)),
+        …
+    ]
+    …
+
+
+5. Deploy your application so that it's accessible to the Internet over HTTP on port 80.
+
+6. Run migrations to create the necessary models.
 
 .. code-block:: bash
 
