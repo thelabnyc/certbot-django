@@ -43,9 +43,12 @@ class TestAcmeChallengeAPI(TestCase):
         self.perm_change = Permission.objects.get(codename='change_acmechallenge')
         self.perm_delete = Permission.objects.get(codename='delete_acmechallenge')
 
-        self.user_joe = User.objects.create_user(username='joe', is_staff=False)
+        self.user_joe = User.objects.create_user(username='joe')
+        self.user_joe.is_staff = False
+        self.user_joe.save()
 
-        self.user_certbot = User.objects.create_user(username='certbot', is_staff=True)
+        self.user_certbot = User.objects.create_user(username='certbot')
+        self.user_certbot.is_staff = True
         self.user_certbot.user_permissions = [
             self.perm_add,
             self.perm_change,
