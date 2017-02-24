@@ -8,6 +8,9 @@ import os.path
 import os
 import zope.component
 import zope.interface
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @zope.interface.implementer(interfaces.IAuthenticator)
@@ -35,6 +38,11 @@ class Authenticator(common.Plugin):
             help='Directory to store generated public / private keys or to read previously generated keys from.')
         add('public-ip-logging-ok', action='store_true',
             help='Automatically allows public IP logging (default: Ask)')
+
+
+    def __init__(self, *args, **kwargs):
+        super(Authenticator, self).__init__(*args, **kwargs)
+        self._keys = {}
 
 
     def prepare(self):
@@ -119,8 +127,10 @@ class Authenticator(common.Plugin):
             'response': response,
         }
         try:
+            logger.info("Attempting to add ACMEChallenge to server: %s" % challenge)
             resp = requests.post(url, headers=headers, data=data)
             resp.raise_for_status()
+            logger.info("Successfully added ACMEChallenge to server: %s" % challenge)
         except requests.RequestException as e:
             raise errors.PluginError('Encountered error when adding challenge to Django server: {}'.format(e))
 
@@ -129,10 +139,11 @@ class Authenticator(common.Plugin):
         url = 'http://{}/.well-known/challenges/{}/'.format(domain, challenge)
         headers = self._get_headers(domain)
         try:
-            resp = requests.delete(url, headers=headers)
-            resp.raise_for_status()
+            logger.info("Attempting to remove ACMEChallenge from server: %s" % challenge)
+            requests.delete(url, headers=headers)
+            logger.info("Successfully removed ACMEChallenge from server: %s" % challenge)
         except requests.RequestException as e:
-            raise errors.PluginError('Encountered error when removing challenge from Django server: {}'.format(e))
+            logger.warning("Encountered error while removing ACMEChallenge from server: %s" % challenge)
 
 
     def _get_headers(self, domain):
@@ -148,7 +159,11 @@ class Authenticator(common.Plugin):
         key_dir = self._get_key_dir()
         filename = 'certbot_django_id_rsa_{}'.format(domain).replace('.', '')
         private_key_file = os.path.join(key_dir, filename)
-        private_key = None
+
+        private_key = self._keys.get(private_key_file, None)
+        if private_key:
+            logger.info('Using cached private key: %s' % private_key_file)
+            return private_key
 
         try:
             with open(private_key_file, 'r') as keyfile:
@@ -160,6 +175,7 @@ class Authenticator(common.Plugin):
         if not private_key:
             private_key, public_key = generate_key_pair()
             try:
+                logger.info('Trying to load private key: %s' % private_key_file)
                 with open(private_key_file, 'w') as keyfile:
                     keyfile.write(private_key)
             except (IOError, OSError):
@@ -180,6 +196,7 @@ class Authenticator(common.Plugin):
             display = zope.component.getUtility(interfaces.IDisplay)
             display.notification(msg, wrap=False, force_interactive=True)
 
+        self._keys[private_key_file] = private_key
         return private_key
 
 
@@ -196,4 +213,4 @@ class Authenticator(common.Plugin):
         if not key_dir:
             cli_flag = '--{0}'.format(self.option_name('key-directory'))
             raise errors.PluginError('Must provide key storage directory with flag {}'.format(cli_flag))
-        return os.path.abspath(key_dir)
+        return os.path.abspath(os.path.expanduser(key_dir))
