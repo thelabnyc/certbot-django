@@ -5,7 +5,7 @@ import certbot_django.server.urls
 
 
 urlpatterns = [
-    url(r'^admin/', include(admin.site.urls)),
+    url(r'^admin/', admin.site.urls),
 
     url(r'^\.well-known/', include(certbot_django.server.urls))
 ]

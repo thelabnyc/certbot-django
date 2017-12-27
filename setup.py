@@ -12,8 +12,8 @@ from versiontag import get_version, cache_git_tag  # NOQA
 packages = find_packages('src')
 
 install_requires = [
-    'asymmetric_jwt_auth>=0.3.0',
-    'Django>=1.8.17',
+    'asymmetric_jwt_auth>=0.4.1',
+    'Django>=1.11',
     'djangorestframework>=3.4.7',
     'requests>=2.13.0'
 ]
@@ -55,15 +55,12 @@ setup(
     version=get_version(pypi=True),
     long_description=open('README.rst').read(),
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'Environment :: Plugins',
         'Intended Audience :: System Administrators',
         'License :: OSI Approved :: Apache Software License',
         'Operating System :: POSIX :: Linux',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.6',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',

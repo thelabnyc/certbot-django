@@ -1,7 +1,7 @@
 from asymmetric_jwt_auth.models import PublicKey
 from asymmetric_jwt_auth import generate_key_pair, create_auth_header
 from django.contrib.auth.models import User, Permission
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.test import TestCase
 from rest_framework import status
 from ..models import AcmeChallenge
@@ -49,12 +49,10 @@ class TestAcmeChallengeAPI(TestCase):
 
         self.user_certbot = User.objects.create_user(username='certbot')
         self.user_certbot.is_staff = True
-        self.user_certbot.user_permissions = [
-            self.perm_add,
-            self.perm_change,
-            self.perm_delete,
-        ]
         self.user_certbot.save()
+        self.user_certbot.user_permissions.add(self.perm_add)
+        self.user_certbot.user_permissions.add(self.perm_change)
+        self.user_certbot.user_permissions.add(self.perm_delete)
 
         _priv, _pub = generate_key_pair()
         self.priv_key_joe = _priv
