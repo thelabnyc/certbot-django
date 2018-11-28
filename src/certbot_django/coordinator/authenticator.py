@@ -155,7 +155,7 @@ class Authenticator(common.Plugin):
             logger.info("Attempting to remove ACMEChallenge from server: %s" % challenge)
             requests.delete(url, headers=headers)
             logger.info("Successfully removed ACMEChallenge from server: %s" % challenge)
-        except requests.RequestException as e:
+        except requests.RequestException:
             logger.warning("Encountered error while removing ACMEChallenge from server: %s" % challenge)
 
 

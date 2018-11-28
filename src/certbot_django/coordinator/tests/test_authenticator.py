@@ -128,7 +128,7 @@ class AuthenticatorTest(unittest.TestCase):
 
         with requests_mock.mock() as m:
             m.post('http://example.com/.well-known/challenges/', json={}, status_code=201)
-            m.delete(re.compile('example\.com/\.well-known/challenges/[A-Za-z0-9]+/$'), json={}, status_code=204)
+            m.delete(re.compile('example.com/.well-known/challenges/[A-Za-z0-9]+/$'), json={}, status_code=204)
             self.auth.perform(self.achalls)
             self.auth.cleanup(self.achalls)
             self.assertEqual(m.call_count, 2)
